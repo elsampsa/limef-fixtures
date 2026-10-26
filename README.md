@@ -98,3 +98,19 @@ Stream #0:0: Video: vp8, yuv420p, 1280x720, 25 fps (default)
 Stream #0:1: Audio: aac, 8000 Hz, 1 channels, 32 kb/s (default)
 ```
 
+
+## jontxu_hevc.mkv, jontxu_hevc.mp4, jontxu_av1.mkv
+
+- 10 s from `jontxu_k1_sec.mkv`, re-encoded with the system ffmpeg (libx265 is GPL: not in limef's own ffmpeg)
+- Key-frame each second, no B-frames
+- `jontxu_hevc.mkv`: H.265 Main, parameter sets also in-band (`repeat-headers`), PCM audio
+- `jontxu_hevc.mp4`: H.265 Main, `hvc1` (parameter sets only in hvcC), AAC audio
+- `jontxu_av1.mkv`: AV1 Main (libaom realtime), Opus audio 48 kHz
+- `jontxu_hevc_noaudio.mp4`: `jontxu_hevc.mp4` without audio (`ffmpeg -i jontxu_hevc.mp4 -an -c copy`)
+
+```bash
+KF='-force_key_frames expr:gte(t,n_forced*1)'
+ffmpeg -i jontxu_k1_sec.mkv -t 10 -c:v libx265 -preset ultrafast -x265-params bframes=0:keyint=25:min-keyint=25:scenecut=0:repeat-headers=1 $KF -c:a copy jontxu_hevc.mkv
+ffmpeg -i jontxu_k1_sec.mkv -t 10 -c:v libx265 -preset ultrafast -tag:v hvc1 -x265-params bframes=0:keyint=25:min-keyint=25:scenecut=0 $KF -c:a aac -movflags +faststart jontxu_hevc.mp4
+ffmpeg -i jontxu_k1_sec.mkv -t 10 -c:v libaom-av1 -usage realtime -cpu-used 8 -row-mt 1 -b:v 1500k -g 25 -lag-in-frames 0 $KF -c:a libopus -ar 48000 jontxu_av1.mkv
+```
